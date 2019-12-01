@@ -1,0 +1,57 @@
+hystrix:
+  command:
+    fallbackcmd:
+       execution:
+          isolation:
+              thread:
+                 timeoutInMilliseconds: 2000
+
+
+
+server:
+  port: 8088
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    preferIpAddress: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: ALWAYS
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+      - id: first-service
+        uri: lb://FIRST-SERVICE
+        predicates:
+        - Path=/api/v1/first/**
+        filters:
+        - RewritePath=/api/v1/first/(?<remains>), /$\{remains}
+        - AddRequestHeader=X-first-Header, first-service-header
+        - name: Hystrix
+          args:
+            name: hystrix
+            fallbackUri: forward:/fallback/first
+      - id: second-service
+        uri: lb://SECOND-SERVICE
+        predicates:
+        - Path=/api/v1/second/**
+        filters:
+        - RewritePath=/api/v1/second/(?<remains>), /$\{remains}
+        - AddRequestHeader=X-second-Header, second-service-header
+        - name: Hystrix
+          args:
+            name: hystrix
+            fallbackUri: forward:/fallback/second
